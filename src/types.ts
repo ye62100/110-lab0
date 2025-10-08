@@ -1,30 +1,28 @@
 // src/types.ts
 
-// 供应品购买数量类型
-export interface SuppliesBought {
-    lemon: number;
-    sugar: number;
-    ice: number;
-    cup: number;
-}
-
-// 供应品价格类型
-export interface SuppliesPrices {
-    lemon: number;
-    sugar: number;
-    ice: number;
-    cup: number;
-}
-
-// 天气类型
-export type WeatherType = "cold ❄️" | "mild 🌤️" | "hot 🔥";
-
-// 天气常量
 const WeatherConstants = {
-    COLD: "cold ❄️" as WeatherType,
-    MILD: "mild 🌤️" as WeatherType,
-    HOT: "hot 🔥" as WeatherType
-};
+    COLD: "cold ❄️",
+    MILD: "mild 🌤️",
+    HOT: "hot 🔥",
+} as const;
+ 
 
+// 默认导出整个常量对象
 export default WeatherConstants;
-export { WeatherType };
+
+// ⚠️ 可选：如果你希望在其他文件中使用严格的联合类型，可以同时导出这个类型
+export type WeatherType = typeof WeatherConstants[keyof typeof WeatherConstants];
+
+export default interface SuppliesPrices {
+    lemon: number;
+    sugar: number;
+    ice: number;
+    cup: number;
+}
+
+export default interface SuppliesBought {
+    lemon: number;
+    sugar: number;
+    ice: number;
+    cup: number;
+}

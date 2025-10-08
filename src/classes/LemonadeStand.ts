@@ -1,125 +1,92 @@
-// src/classes/LemonadeStand.ts
+import  Inventory  from './Inventory';
+import Recipe  from './Recipe';
 
-import Inventory from './Inventory';
-import Recipe from './Recipe';
-import { SuppliesBought, SuppliesPrices, WeatherType } from '../types';
+import  SuppliesBought from '../types';
+import  SuppliesPrices from '../types';
+import WeatherConstants, { WeatherType } from '../types';
 
 export default class LemonadeStand {
-    public currentCash: number;
-    public currentInventory: Inventory;
+    private cashBalance: number;
+    private inventory: Inventory;
     private recipe: Recipe;
-    private lemonadePrice: number = 1.00; // 每杯柠檬水的售价
 
     constructor(initialCash: number) {
-        this.currentCash = initialCash;
-        this.currentInventory = new Inventory();
-        this.recipe = new Recipe(1, 1, 1, 1); // 默认配方：1个柠檬，1个糖，1个冰，1个杯子 = 1杯柠檬水
+        this.cashBalance = initialCash;
+        this.inventory = new Inventory(); // 聚合 Inventory 实例
+        this.recipe = new Recipe();       // 聚合 Recipe 实例
     }
 
-    // 处理购买供应品
-    processPurchases(supplies: SuppliesBought, prices: SuppliesPrices): { success: boolean; cost: number } {
-        const totalCost = this.calculatePurchaseCost(supplies, prices);
-        
-        if (this.currentCash >= totalCost) {
-            this.currentCash -= totalCost;
-            this.currentInventory.addSupplies(supplies);
-            return { success: true, cost: totalCost };
-        } else {
-            return { success: false, cost: totalCost };
+    public get currentCash(): number {
+        return this.cashBalance;
+    }
+
+    public get currentInventory() {
+        return this.inventory.status;
+    }
+    
+    /**
+     * 处理玩家购买物料的流程。
+     * @returns boolean 购买是否成功 (例如: 现金不足购买失败)
+     */
+    public processPurchases(supplies: SuppliesBought, prices: SuppliesPrices): { success: boolean, cost: number } {
+        const cost = 
+            supplies.lemon * prices.lemon +
+            supplies.sugar * prices.sugar +
+            supplies.ice * prices.ice +
+            supplies.cup * prices.cup;
+
+        if (cost > this.cashBalance) {
+            return { success: false, cost };
         }
+
+        this.cashBalance -= cost;
+        this.inventory.add(supplies);
+        
+        return { success: true, cost };
     }
 
-    // 计算购买成本
-    private calculatePurchaseCost(supplies: SuppliesBought, prices: SuppliesPrices): number {
-        return supplies.lemon * prices.lemon +
-               supplies.sugar * prices.sugar +
-               supplies.ice * prices.ice +
-               supplies.cup * prices.cup;
+    /**
+     * 计算并执行当日的销售。
+     * @param weather 当日的天气。
+     * @returns 实际售出的杯数。
+     */
+   // LemonadeStand.ts (假设你已经导入了 WeatherConstants 和 WeatherType)
+
+
+// 修正了参数类型和 switch 语句的判断对象
+public executeSales(weather: WeatherType): number { 
+    // 1. 根据天气估算潜在需求
+    let potentialSales: number;
+
+    // 修正：switch 语句应该基于传入的 'weather' 参数进行判断
+    switch (weather) { 
+        // 修正：case 后面使用 WeatherConstants 对象的 *值* (e.g., "hot 🔥")
+        case WeatherConstants.HOT: 
+            potentialSales = 80; // 热天需求高
+            break;
+        case WeatherConstants.MILD: 
+            potentialSales = 40;
+            break;
+        case WeatherConstants.COLD: 
+            potentialSales = 15; // 冷天需求低
+            break;
+        default:
+            // 确保处理了所有可能的情况
+            potentialSales = 0; 
+            break;
     }
 
-    // 执行销售（根据天气决定销售情况）
-    executeSales(weather: WeatherType): number {
-        // 根据天气调整配方
-        const adjustedRecipe = this.recipe.adjustForWeather(weather);
-        
-        // 计算能制作多少杯柠檬水
-        const maxCups = this.calculateMaxCups(adjustedRecipe);
-        
-        // 根据天气决定实际销售数量
-        const demandMultiplier = this.getDemandMultiplier(weather);
-        const actualSales = Math.floor(maxCups * demandMultiplier);
-        
-        // 使用供应品制作柠檬水
-        const cupsMade = this.makeLemonade(actualSales, adjustedRecipe);
-        
-        // 计算收入
-        const revenue = cupsMade * this.lemonadePrice;
-        this.currentCash += revenue;
-        
-        return cupsMade;
-    }
+    // 2. 检查库存能制作的最大杯数
+    const maxCupsFromInventory = this.inventory.getMaxCups(this.recipe);
 
-    // 计算能制作的最大杯数
-    private calculateMaxCups(recipe: Recipe): number {
-        const ingredients = recipe.getIngredients();
-        
-        if (ingredients.lemon === 0 || ingredients.sugar === 0 || ingredients.cup === 0) {
-            return 0;
-        }
-        
-        const maxByLemon = Math.floor(this.currentInventory.lemon / ingredients.lemon);
-        const maxBySugar = Math.floor(this.currentInventory.sugar / ingredients.sugar);
-        const maxByIce = Math.floor(this.currentInventory.ice / ingredients.ice);
-        const maxByCup = Math.floor(this.currentInventory.cup / ingredients.cup);
-        
-        return Math.min(maxByLemon, maxBySugar, maxByIce, maxByCup);
-    }
+    // 3. 实际销售量取决于潜在需求和库存限制中的最小值
+    const actualSales = Math.min(potentialSales, maxCupsFromInventory);
 
-    // 根据天气获取需求倍数
-    private getDemandMultiplier(weather: WeatherType): number {
-        if (weather.includes("hot")) {
-            return 1.5; // 热天需求更高
-        } else if (weather.includes("cold")) {
-            return 0.5; // 冷天需求更低
-        } else {
-            return 1.0; // 温和天气正常需求
-        }
-    }
+    // 4. 执行交易和库存消耗
+    const revenue = actualSales * this.recipe.pricePerCup;
+    this.cashBalance += revenue;
+    this.inventory.consume(actualSales, this.recipe);
 
-    // 制作柠檬水
-    private makeLemonade(cups: number, recipe: Recipe): number {
-        const ingredients = recipe.getIngredients();
-        const totalIngredients = {
-            lemon: ingredients.lemon * cups,
-            sugar: ingredients.sugar * cups,
-            ice: ingredients.ice * cups,
-            cup: ingredients.cup * cups
-        };
-        
-        if (this.currentInventory.canMakeLemonade(totalIngredients)) {
-            this.currentInventory.useSupplies(totalIngredients);
-            return cups;
-        } else {
-            // 如果不能制作全部，计算能制作多少
-            const maxCups = this.calculateMaxCups(recipe);
-            const actualCups = Math.min(cups, maxCups);
-            
-            if (actualCups > 0) {
-                const actualIngredients = {
-                    lemon: ingredients.lemon * actualCups,
-                    sugar: ingredients.sugar * actualCups,
-                    ice: ingredients.ice * actualCups,
-                    cup: ingredients.cup * actualCups
-                };
-                this.currentInventory.useSupplies(actualIngredients);
-            }
-            
-            return actualCups;
-        }
-    }
-
-    // 获取当前库存（用于显示）
-    get currentInventoryDisplay(): SuppliesBought {
-        return this.currentInventory.getCurrentInventory();
-    }
+    return actualSales;
+}
 }

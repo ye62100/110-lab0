@@ -1,65 +1,66 @@
-// src/classes/Inventory.ts
-
-import { SuppliesBought } from '../types';
+import  Recipe  from "./Recipe";
+import  SuppliesBought  from "../types"; // 假设类型定义在同一目录
 
 export default class Inventory {
-    public lemon: number = 0;
-    public sugar: number = 0;
-    public ice: number = 0;
-    public cup: number = 0;
+    private lemons: number = 0;
+    private sugar: number = 0;
+    private ice: number = 0;
+    private cups: number = 0;
 
-    constructor(initialSupplies?: Partial<SuppliesBought>) {
-        if (initialSupplies) {
-            this.lemon = initialSupplies.lemon || 0;
-            this.sugar = initialSupplies.sugar || 0;
-            this.ice = initialSupplies.ice || 0;
-            this.cup = initialSupplies.cup || 0;
-        }
-    }
-
-    // 添加供应品到库存
-    addSupplies(supplies: SuppliesBought): void {
-        this.lemon += supplies.lemon;
-        this.sugar += supplies.sugar;
-        this.ice += supplies.ice;
-        this.cup += supplies.cup;
-    }
-
-    // 检查是否有足够的供应品制作柠檬水
-    canMakeLemonade(recipe: { lemon: number; sugar: number; ice: number; cup: number }): boolean {
-        return this.lemon >= recipe.lemon &&
-               this.sugar >= recipe.sugar &&
-               this.ice >= recipe.ice &&
-               this.cup >= recipe.cup;
-    }
-
-    // 使用供应品制作柠檬水
-    useSupplies(recipe: { lemon: number; sugar: number; ice: number; cup: number }): boolean {
-        if (this.canMakeLemonade(recipe)) {
-            this.lemon -= recipe.lemon;
-            this.sugar -= recipe.sugar;
-            this.ice -= recipe.ice;
-            this.cup -= recipe.cup;
-            return true;
-        }
-        return false;
-    }
-
-    // 获取当前库存信息
-    getCurrentInventory(): SuppliesBought {
+    // 获取当前库存状态的方法 (用于报告)
+    public get status() {
         return {
-            lemon: this.lemon,
+            lemons: this.lemons,
             sugar: this.sugar,
             ice: this.ice,
-            cup: this.cup
+            cups: this.cups,
         };
     }
 
-    // 计算总库存价值（用于调试）
-    getTotalValue(prices: { lemon: number; sugar: number; ice: number; cup: number }): number {
-        return this.lemon * prices.lemon +
-               this.sugar * prices.sugar +
-               this.ice * prices.ice +
-               this.cup * prices.cup;
+    /**
+     * 将购买的物料添加到库存中。
+     * @param supplies 玩家购买的物料数量。
+     */
+    public add(supplies: SuppliesBought): void {
+        this.lemons += supplies.lemon;
+        this.sugar += supplies.sugar;
+        this.ice += supplies.ice;
+        this.cups += supplies.cup;
+    }
+
+    /**
+     * 计算当前库存最多能制作多少杯柠檬水。
+     * @param recipe 当前配方。
+     * @returns 最大可制作杯数。
+     */
+    public getMaxCups(recipe: Recipe): number {
+        // 杯子是独立的限制
+        let maxByCups = this.cups; 
+        
+        // 原材料的限制
+        const maxByLemon = Math.floor(this.lemons / recipe.lemonsPerCup);
+        const maxBySugar = Math.floor(this.sugar / recipe.sugarPerCup);
+        const maxByIce = Math.floor(this.ice / recipe.icePerCup);
+
+        // 最终可制作杯数取决于最少的限制因素
+        return Math.min(maxByCups, maxByLemon, maxBySugar, maxByIce);
+    }
+
+    /**
+     * 根据销售数量消耗库存。
+     * @param count 实际售出的杯数。
+     * @param recipe 当前配方。
+     */
+    public consume(count: number, recipe: Recipe): void {
+        this.lemons -= count * recipe.lemonsPerCup;
+        this.sugar -= count * recipe.sugarPerCup;
+        this.ice -= count * recipe.icePerCup;
+        this.cups -= count;
+        
+        // 确保数量不为负（虽然逻辑上不应该发生）
+        this.lemons = Math.max(0, this.lemons);
+        this.sugar = Math.max(0, this.sugar);
+        this.ice = Math.max(0, this.ice);
+        this.cups = Math.max(0, this.cups);
     }
 }
